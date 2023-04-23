@@ -289,7 +289,7 @@ int main(){
         displayMenuAdmin();
 
         char ch;
-        scanf("c", &ch);
+        scanf("%c", &ch);
         while (1){
 
             if (ch == 'a'){
