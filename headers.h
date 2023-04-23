@@ -13,5 +13,7 @@ struct cart {
     struct product products[MAX_PROD];
 };
 
-
-
+struct index {
+    int custid; 
+    int offset;
+};
