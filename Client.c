@@ -61,33 +61,25 @@ int calculateTotal(struct cart c){
     }
 
     return total;
-
-}
-
-void writeProduct(int fd, struct product p){
-    write(fd, &p.id, sizeof(int));
-    write(fd, "\t", sizeof("\t"));
-    write(fd, p.name, sizeof(p.name));
-    write(fd, "\t", sizeof("\t"));
-    write(fd, &p.qty, sizeof(int));
-    write(fd, "\t", sizeof("\t"));
-    write(fd, &p.price, sizeof(int));
-    write(fd, "\n", sizeof("\n"));
 }
 
 void generateReceipt(int total, struct cart c){
 
-    int fd_rec = open("receipt.txt", O_CREAT, 0777);
-    
+    int fd_rec = open("receipt.txt", O_CREAT | O_RDWR, 0777);
+
     write(fd_rec, "ProductID\tProductName\tQuantity\tPrice\n", sizeof("ProductID\tProductName\tQuantity\tPrice\n"));
 
+    char temp[100];
+
     for (int i=0; i<MAX_PROD; i++){
-        writeProduct(fd_rec, c.products[i]);
+        if (c.products[i].id != -1){
+            sprintf(temp, "%d\t%s\t%d\t%d\n", c.products[i].id, c.products[i].name, c.products[i].qty, c.products[i].price);
+            write(fd_rec, temp, sizeof(temp));
+        }
     }
 
-    write(fd_rec, "Total - ", sizeof("Total - "));
-    write(fd_rec, total, sizeof(int));
-    write(fd_rec, "\n", sizeof("\n"));
+    sprintf(temp, "Total - %d\n", total);
+    write(fd_rec, temp, sizeof(temp));
     close(fd_rec);
 }
 
@@ -167,28 +159,28 @@ int main(){
 
                 char response[80];
 
-                    int pid, qty;
-                    printf("Enter productId to order\n");
-                    scanf("%d", &pid);
-                    
-                    while (1){
-                        printf("Enter quantity\n");
-                        scanf("%d", &qty);
+                int pid, qty;
+                printf("Enter productId to order\n");
+                scanf("%d", &pid);
+                
+                while (1){
+                    printf("Enter quantity\n");
+                    scanf("%d", &qty);
 
-                        if (qty <= 0){
-                            printf("Quantity can't be <= 0, try again\n");
-                        }else{
-                            break;
-                        }
+                    if (qty <= 0){
+                        printf("Quantity can't be <= 0, try again\n");
+                    }else{
+                        break;
                     }
+                }
 
-                    struct product p;
-                    p.id = pid;
-                    p.qty = qty;
+                struct product p;
+                p.id = pid;
+                p.qty = qty;
 
-                    write(sockfd, &p, sizeof(struct product));
-                    read(sockfd, response, sizeof(response));
-                    printf("%s", response);
+                write(sockfd, &p, sizeof(struct product));
+                read(sockfd, response, sizeof(response));
+                printf("%s", response);
                 
             }
 
