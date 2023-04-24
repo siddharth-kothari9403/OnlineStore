@@ -92,7 +92,6 @@ int main(){
 
             int user;
             read(new_fd, &user, sizeof(int));
-            // printf("%d\n", user);
             
             if (user == 1){
 
@@ -105,7 +104,7 @@ int main(){
                     lseek(fd_custs, 0, SEEK_SET);
 
                     if (ch == 'a'){
-                        printf("Terminating connection\n");
+
                         close(new_fd);
                         break;
                     }
@@ -118,7 +117,6 @@ int main(){
                         lock.l_len = 0;
                         lock.l_type = F_RDLCK;
 
-                        // printf("Retrieving data\n");
                         fcntl(fd, F_SETLKW, &lock);
 
                         struct product p;
@@ -142,7 +140,7 @@ int main(){
                         int offset = getOffset(cust_id, fd_custs);
                         struct flock lock_cart;
                         
-                        int i = -1;
+                        // int i = -1;
                         lock_cart.l_whence = SEEK_SET;
                         lock_cart.l_len = sizeof(struct cart);
                         lock_cart.l_type = F_RDLCK;
@@ -156,10 +154,10 @@ int main(){
                             
                         }else{
                             struct cart c;
-                            lock_cart.l_start = offset*sizeof(struct cart);
+                            lock_cart.l_start = offset;
 
                             fcntl(fd_cart, F_SETLKW, &lock_cart);
-                            lseek(fd_cart, i*sizeof(struct cart), SEEK_SET);
+                            lseek(fd_cart, offset, SEEK_SET);
                             read(fd_cart, &c, sizeof(struct cart));
                             write(new_fd, &c, sizeof(struct cart));
                         }
@@ -180,15 +178,12 @@ int main(){
                             continue;
                         }
 
-                        int noprod;
-                        read(new_fd, &noprod, sizeof(int));
-
                         struct flock lock_cart;
                         
                         int i = -1;
                         lock_cart.l_whence = SEEK_SET;
                         lock_cart.l_len = sizeof(struct cart);
-                        lock_cart.l_start = offset * sizeof(struct cart);
+                        lock_cart.l_start = offset;
                         lock_cart.l_type = F_WRLCK;
 
                         struct flock lock_prod;
@@ -200,90 +195,91 @@ int main(){
                         fcntl(fd_cart, F_SETLKW, &lock_cart);
                         struct cart c;
 
-                        lseek(fd_cart, offset * sizeof(struct cart), SEEK_SET);
+                        lseek(fd_cart, offset, SEEK_SET);
                         read(fd_cart, &c, sizeof(struct cart));
 
                         fcntl(fd, F_SETLKW, &lock_prod);
 
-                        for (int i=0; i<noprod; i++){
-                            struct product p;
-                            read(new_fd, &p, sizeof(struct product));
+                        
+                        struct product p;
+                        read(new_fd, &p, sizeof(struct product));
 
-                            int prod_id = p.id;
-                            int qty = p.qty;
+                        int prod_id = p.id;
+                        int qty = p.qty;
 
-                            struct product p1;
-                            int found = 0;
-                            while (read(fd, &p1, sizeof(struct product))){
-                                if (p1.id == p.id) {
-                                    if (p1.qty >= p.qty){
-                                        // p1.qty -= p.qty;
-                                        found = 1;
-                                        break;
-                                    }else{
-                                        found = 0;
-                                        break;
-                                    }
-                                }
-                            }
-                            lock_cart.l_type = F_UNLCK;
-                            lock_prod.l_type = F_UNLCK;
-
-                            fcntl(fd, F_SETLKW, &lock_prod);
-                            fcntl(fd_cart, F_SETLKW, &lock_cart);
-
-                            if (!found){
-                                write(new_fd, "Product id invalid or out of stock\n", sizeof("Product id invalid or out of stock\n"));
-                                continue;
-                            }
-
-                            int flg = 0;
-                            
-                            int flg1 = 0;
-                            for (int i=0; i<MAX_PROD; i++){
-                                if (c.products[i].id == p.id){
-                                    flg1 = 1;
+                        struct product p1;
+                        int found = 0;
+                        while (read(fd, &p1, sizeof(struct product))){
+                            if (p1.id == p.id) {
+                                if (p1.qty >= p.qty){
+                                    // p1.qty -= p.qty;
+                                    found = 1;
+                                    break;
+                                }else{
+                                    found = 0;
                                     break;
                                 }
                             }
+                        }
+                        lock_cart.l_type = F_UNLCK;
+                        lock_prod.l_type = F_UNLCK;
 
-                            if (flg1){
-                                write(new_fd, "Product already exists in cart\n", sizeof("Product already exists in cart\n"));
-                                lock_cart.l_type = F_UNLCK;
-                                fcntl(fd_cart, F_SETLKW, &lock_cart);
-                                continue;
-                            }
+                        fcntl(fd, F_SETLKW, &lock_prod);
+                        fcntl(fd_cart, F_SETLKW, &lock_cart);
 
-                            for (int i=0; i<MAX_PROD; i++){
-                                if (c.products[i].id != -1){
-
-                                    flg = 1;
-                                    c.products[i].id = p.id;
-                                    c.products[i].qty = p.qty;
-                                    strcpy(c.products[i].name, p1.name);
-                                    c.products[i].price = p1.price;
-
-                                }else if (c.products[i].qty <= 0){
-
-                                    flg = 1;
-                                    c.products[i].id = p.id;
-                                    c.products[i].qty = p.qty;
-                                    strcpy(c.products[i].name, p1.name);
-                                    c.products[i].price = p1.price;
-                                }
-                            }
-
-                            if (!flg){
-                                write(new_fd, "Cart limit reached\n", sizeof("Cart limit reached\n"));
-                                lock_cart.l_type = F_UNLCK;
-                                fcntl(fd_cart, F_SETLKW, &lock_cart);
-                                continue;
-                            }
-
-                            write(new_fd, "Item added to cart\n", sizeof("Item added to cart\n"));
+                        if (!found){
+                            write(new_fd, "Product id invalid or out of stock\n", sizeof("Product id invalid or out of stock\n"));
+                            continue;
                         }
 
-                        lseek(fd_cart, (offset)*sizeof(struct cart), SEEK_SET);
+                        int flg = 0;
+                        
+                        int flg1 = 0;
+                        for (int i=0; i<MAX_PROD; i++){
+                            if (c.products[i].id == p.id){
+                                flg1 = 1;
+                                break;
+                            }
+                        }
+
+                        if (flg1){
+                            write(new_fd, "Product already exists in cart\n", sizeof("Product already exists in cart\n"));
+                            lock_cart.l_type = F_UNLCK;
+                            fcntl(fd_cart, F_SETLKW, &lock_cart);
+                            continue;
+                        }
+
+                        for (int i=0; i<MAX_PROD; i++){
+                            if (c.products[i].id == -1){
+                                flg = 1;
+                                c.products[i].id = p.id;
+                                c.products[i].qty = p.qty;
+                                strcpy(c.products[i].name, p1.name);
+                                c.products[i].price = p1.price;
+                                break;
+
+                            }else if (c.products[i].qty <= 0){
+                                flg = 1;
+                                c.products[i].id = p.id;
+                                c.products[i].qty = p.qty;
+                                strcpy(c.products[i].name, p1.name);
+                                c.products[i].price = p1.price;
+                                break;
+
+                            }
+                        }
+
+                        if (!flg){
+                            write(new_fd, "Cart limit reached\n", sizeof("Cart limit reached\n"));
+                            lock_cart.l_type = F_UNLCK;
+                            fcntl(fd_cart, F_SETLKW, &lock_cart);
+                            continue;
+                        }
+
+                        write(new_fd, "Item added to cart\n", sizeof("Item added to cart\n"));
+                        
+
+                        lseek(fd_cart, offset, SEEK_SET);
                         write(fd_cart, &c, sizeof(struct cart));
                         // write(new_fd, "Valid products added to cart\n", sizeof("Valid products added to cart\n"));
                         lock_cart.l_type = F_UNLCK;
@@ -304,15 +300,15 @@ int main(){
 
                         struct flock lock_cart;
                         
-                        int i = -1;
+                        // int i = -1;
                         lock_cart.l_whence = SEEK_SET;
                         lock_cart.l_len = sizeof(struct cart);
-                        lock_cart.l_start = offset * sizeof(struct cart);
+                        lock_cart.l_start = offset;
                         lock_cart.l_type = F_WRLCK;
                         fcntl(fd_cart, F_SETLKW, &lock_cart);
 
                         struct cart c;
-                        lseek(fd_cart, offset*sizeof(struct cart), SEEK_SET);
+                        lseek(fd_cart, offset, SEEK_SET);
                         read(fd_cart, &c, sizeof(struct cart));
 
                         int pid, qty;
@@ -323,7 +319,8 @@ int main(){
                         qty = p.qty;
 
                         int flg = 0;
-                        for (int i=0; i<MAX_PROD; i++){
+                        int i;
+                        for (i=0; i<MAX_PROD; i++){
                             if (c.products[i].id == pid){
                                 
                                 struct flock lock_prod;
@@ -362,7 +359,7 @@ int main(){
 
                         c.products[i].qty = qty;
                         write(new_fd, "Update successful\n", sizeof("Update successful\n"));
-                        lseek(fd_cart, offset*sizeof(struct cart), SEEK_SET);
+                        lseek(fd_cart, offset, SEEK_SET);
                         write(fd_cart, &c, sizeof(struct cart));
 
                         lock_cart.l_type = F_UNLCK;
@@ -383,40 +380,43 @@ int main(){
 
                         struct flock lock_cart;
                         
-                        int i = -1;
                         lock_cart.l_whence = SEEK_SET;
                         lock_cart.l_len = sizeof(struct cart);
-                        lock_cart.l_start = offset * sizeof(struct cart);
+                        lock_cart.l_start = offset;
                         lock_cart.l_type = F_WRLCK;
                         fcntl(fd_cart, F_SETLKW, &lock_cart);
 
                         struct cart c;
-                        lseek(fd_cart, offset*sizeof(struct cart), SEEK_SET);
+                        lseek(fd_cart, offset, SEEK_SET);
                         read(fd_cart, &c, sizeof(struct cart));
                         write(new_fd, &c, sizeof(struct cart));
 
                         int total = 0;
 
                         for (int i=0; i<MAX_PROD; i++){
-                            write(new_fd, &c.products[i].qty, sizeof(int));
 
-                            lseek(fd, 0, SEEK_SET);
+                            if (c.products[i].id != -1){
+                                write(new_fd, &c.products[i].qty, sizeof(int));
 
-                            struct product p;
-                            while (read(fd, &p, sizeof(struct product))){
+                                lseek(fd, 0, SEEK_SET);
 
-                                if (p.id == c.products[i].id) {
-                                    int min ;
-                                    if (c.products[i].qty >= p.qty){
-                                        min = p.qty;
-                                    }else{
-                                        min = c.products[i].qty;
+                                struct product p;
+                                while (read(fd, &p, sizeof(struct product))){
+
+                                    if (p.id == c.products[i].id) {
+                                        int min ;
+                                        if (c.products[i].qty >= p.qty){
+                                            min = p.qty;
+                                        }else{
+                                            min = c.products[i].qty;
+                                        }
+
+                                        write(new_fd, &min, sizeof(int));
+                                        write(new_fd, &p.price, sizeof(int));
                                     }
-
-                                    write(new_fd, &min, sizeof(int));
-                                    write(new_fd, &p.qty, sizeof(int));
                                 }
                             }
+                            
                         }
 
                         char ch;
@@ -456,7 +456,7 @@ int main(){
                             }
                         }
 
-                        lseek(fd_cart, offset*sizeof(struct cart), SEEK_SET);
+                        lseek(fd_cart, offset, SEEK_SET);
 
                         for (int i=0; i,MAX_PROD; i++){
                             c.products[i].id = -1;
@@ -510,6 +510,8 @@ int main(){
                             fcntl(fd_custs, F_SETLKW, &lock);
                             write(new_fd, &max_id, sizeof(int));
 
+                            debugCust(fd_custs);
+
                         }else{
                             continue;
                         }
@@ -519,33 +521,26 @@ int main(){
 
             }
             else if (user == 2){
-                // printf("Here\n");
 
                 char ch;
                 while (1){
                     read(new_fd, &ch, sizeof(ch));
-                    // printf("%c\n", ch);
 
                     lseek(fd, 0, SEEK_SET);
                     lseek(fd_cart, 0, SEEK_SET);
                     lseek(fd_custs, 0, SEEK_SET);
 
                     if (ch == 'a'){
-                        // printf("Here\n");
                         char name[50];
                         int id, qty, price;
 
                         struct product p1;
-                        // int n = read(new_fd, name, sizeof(name));
                         int n = read(new_fd, &p1, sizeof(struct product));
 
                         strcpy(name, p1.name);
                         id = p1.id;
                         qty = p1.qty;
                         price = p1.price;
-
-                        // printf("%s\n", name);
-                        // printf("%d %d %d\n", id, qty, price);
 
                         struct flock lock;
                         lock.l_len = 0;
@@ -559,8 +554,7 @@ int main(){
 
                         int flg = 0;
                         while (read(fd, &p, sizeof(struct product))){
-                            // cout<<"Here"<<endl;
-                            // printf("Here\n");
+
                             if (p.id == id){
                                 write(new_fd, "Duplicate product\n", sizeof("Duplicate product\n"));
                                 lock.l_type = F_UNLCK;
@@ -636,18 +630,13 @@ int main(){
                     }
 
                     else if (ch == 'c'){
-                        // printf("Here\n");
                         int id;
-                        // read(new_fd, &id, sizeof(int));
                         int price;
-                        // read(new_fd, &price, sizeof(int));
 
                         struct product p1;
                         read(new_fd, &p1, sizeof(struct product));
                         id = p1.id;
                         price = p1.price;
-
-                        // printf("%d %d\n", id, price);
 
                         struct flock lock;
                         lock.l_len = 0;
@@ -661,7 +650,6 @@ int main(){
                         struct product p;
                         while (read(fd, &p, sizeof(struct product))){
                             if (p.id == id){
-                                printf("Here\n");
                                 lseek(fd, (-1)*sizeof(struct product), SEEK_CUR);
 
                                 lock.l_type = F_UNLCK;
@@ -673,7 +661,6 @@ int main(){
                                 lock.l_len = sizeof(struct product);
 
                                 p.price = price;
-                                printf("%d\n", p.price);
 
                                 write(fd, &p, sizeof(struct product));
                                 write(new_fd, "Price modified successfully", sizeof("Price modified successfully"));
@@ -717,9 +704,7 @@ int main(){
                         
                         struct product p;
                         while (read(fd, &p, sizeof(struct product))){
-                            printf("Here\n");
                             if (p.id == id){
-                                printf("Here1\n");
                                 lseek(fd, (-1)*sizeof(struct product), SEEK_CUR);
 
                                 lock.l_type = F_UNLCK;
@@ -742,7 +727,6 @@ int main(){
                             }
                         }
 
-                        printf("Out\n");
 
                         if (flg){
                             write(new_fd, "Product id invalid", sizeof("Product id invalid"));
@@ -759,7 +743,6 @@ int main(){
                         lock.l_len = 0;
                         lock.l_type = F_RDLCK;
 
-                        // printf("Retrieving data\n");
                         fcntl(fd, F_SETLKW, &lock);
 
                         struct product p;
@@ -787,8 +770,6 @@ int main(){
                         continue;
                     }
                 }
-
-                // printf("Out of loop\n");
             }
 
         }else{

@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "headers.h"
+#include <fcntl.h>
+#include <sys/stat.h>
 
 void displayMenuUser(){
     printf("Menu to choose from\n");
@@ -30,29 +32,61 @@ void displayMenuAdmin(){
     printf("Please enter your choice\n");
 }
 
-
 void printProduct(struct product p){
     if (p.id != -1 && p.qty > 0){
         printf("%d\t%s\t%d\t%d\n", p.id, p.name, p.qty, p.price);
     }
 }
 
+void getInventory(int sockfd){
+    printf("Fetching data\n");
+    printf("ProductID\tProductName\tQuantityInStock\tPrice\n");
+    while (1){
+        struct product p;
+        read(sockfd, &p, sizeof(struct product));
+        if (p.id != -1){
+            printProduct(p);
+        }else{
+            break;
+        }
+    }
+}
+
 int calculateTotal(struct cart c){
     int total = 0;
+    // printf("Here\n");
     for (int i=0; i<MAX_PROD; i++){
-        total += c.products[i].qty * c.products[i].price;
+        if (c.products[i].id != -1){
+            total += c.products[i].qty * c.products[i].price;
+        }
     }
 
     return total;
 
 }
 
+void writeProduct(int fd, struct product p){
+    write(fd, &p.id, sizeof(int));
+    write(fd, "\t", sizeof("\t"));
+    write(fd, p.name, sizeof(p.name));
+    write(fd, "\t", sizeof("\t"));
+    write(fd, &p.qty, sizeof(int));
+    write(fd, "\t", sizeof("\t"));
+    write(fd, &p.price, sizeof(int));
+    write(fd, "\n", sizeof("\n"));
+}
+
 void generateReceipt(int total, struct cart c){
-    printf("ProductID\tProductName\tQuantity\tPrice\n");
+
+    int fd_rec = open("receipt.txt", O_CREAT, 0777);
+    
+    write(fd_rec, "ProductID\tProductName\tQuantity\tPrice\n", sizeof("ProductID\tProductName\tQuantity\tPrice\n"));
+
     for (int i=0; i<MAX_PROD; i++){
-        printProduct(c.products[i]);
+        writeProduct(fd_rec, c.products[i]);
     }
     printf("Total - %d\n", total);
+    close(fd_rec);
 }
 
 int main(){
@@ -82,10 +116,10 @@ int main(){
     write(sockfd, &user, sizeof(user));
 
     if (user == 1){
-        displayMenuUser();
-        char ch;
-        scanf("%c",&ch);
         while (1){
+            displayMenuUser();
+            char ch;
+            scanf("%c",&ch);
             scanf("%c",&ch);
 
             write(sockfd, &ch, sizeof(char));
@@ -94,17 +128,7 @@ int main(){
                 break;
             }
             else if (ch == 'b'){
-                printf("Fetching data\n");
-                printf("ProductID\tProductName\tQuantityInStock\tPrice\n");
-                while (1){
-                    struct product p;
-                    read(sockfd, &p, sizeof(struct product));
-                    if (p.id != -1){
-                        printProduct(p);
-                    }else{
-                        break;
-                    }
-                }
+                getInventory(sockfd);
             }
             else if (ch == 'c'){
                 int cusid;
@@ -117,7 +141,7 @@ int main(){
                 read(sockfd, &o, sizeof(struct cart));
 
                 if (o.custid != -1){
-                    printf("Customer ID %d", o.custid);
+                    printf("Customer ID %d\n", o.custid);
                     printf("ProductID\tProductName\tQuantityInStock\tPrice\n");
                     for (int i=0; i<MAX_PROD; i++){
                         printProduct(o.products[i]);
@@ -140,21 +164,16 @@ int main(){
                     continue;
                 }
 
-                int noprod;
-                printf("Enter number of products\n");
-                scanf("%d", &noprod);
-                write(sockfd, &noprod, sizeof(int));
-
                 char response[80];
 
-                for (int i=0; i<noprod; i++){
+                // for (int i=0; i<noprod; i++){
                     int pid, qty;
                     printf("Enter productId to order\n");
-                    scanf("%d\n", &pid);
+                    scanf("%d", &pid);
                     
                     while (1){
-                        printf("Enter new quantity\n");
-                        scanf("%d\n", &qty);
+                        printf("Enter quantity\n");
+                        scanf("%d", &qty);
 
                         if (qty <= 0){
                             printf("Quantity can't be <= 0, try again\n");
@@ -170,7 +189,7 @@ int main(){
                     write(sockfd, &p, sizeof(struct product));
                     read(sockfd, response, sizeof(response));
                     printf("%s", response);
-                }
+                
             }
 
             else if (ch == 'e'){
@@ -188,11 +207,11 @@ int main(){
 
                 int pid, qty;
                 printf("Enter productId to modify\n");
-                scanf("%d\n", &pid);
+                scanf("%d", &pid);
 
                 while (1){
                     printf("Enter new quantity, enter 0 to remove product from order\n");
-                    scanf("%d\n", &qty);
+                    scanf("%d", &qty);
 
                     if (qty < 0){
                         printf("Quantity can't be < 0, try again\n");
@@ -230,14 +249,20 @@ int main(){
 
                 int ordered, instock, price;
                 for (int i=0; i<MAX_PROD; i++){
-                    read(sockfd, &ordered, sizeof(int));
-                    read(sockfd, &instock, sizeof(int));
-                    read(sockfd, &price, sizeof(int));
-                    printf("Product id- %d\n", c.products[i].id);
-                    printf("Ordered - %d; In stock - %d; Price - %d\n", ordered, instock, price);
-                    c.products[i].qty = instock;
-                    c.products[i].price = price;
+                    // printf("%d\n", i);
+
+                    if (c.products[i].id != -1){
+                        printf("Product id- %d\n", c.products[i].id);
+                        printf("Ordered - %d; In stock - %d; Price - %d\n", ordered, instock, price);
+                        read(sockfd, &ordered, sizeof(int));
+                        read(sockfd, &instock, sizeof(int));
+                        read(sockfd, &price, sizeof(int));
+                        c.products[i].qty = instock;
+                        c.products[i].price = price;
+                    }
                 }
+
+                // printf("Yp\n");
 
                 int total = calculateTotal(c);
                 
@@ -257,7 +282,7 @@ int main(){
                 }
 
                 char ch = 'y';
-                printf("Payment recorded, order placed");
+                printf("Payment recorded, order placed\n");
                 write(sockfd, &ch, sizeof(char));
                 generateReceipt(total, c);
             }
@@ -265,6 +290,7 @@ int main(){
             else if (ch == 'g'){
                 char conf;
                 printf("Press y/n if you want to continue\n");
+                scanf("%c", &conf);
                 scanf("%c", &conf);
 
                 write(sockfd, &conf, sizeof(char));
@@ -280,18 +306,20 @@ int main(){
             }
             else{
                 printf("Invalid choice, try again\n");
+                // scanf("%c", &ch);
+                // continue;
             }
 
-            displayMenuUser();
+            
         }
     }
     else if (user == 2){
-        displayMenuAdmin();
-
-        char ch;
-        scanf("%c",&ch);
-        scanf("%c",&ch);
+        
         while (1){
+            displayMenuAdmin();
+            char ch;
+            scanf("%c",&ch);
+            scanf("%c",&ch);
             write(sockfd, &ch, sizeof(ch));
 
             if (ch == 'a'){
@@ -381,7 +409,7 @@ int main(){
                     scanf("%d", &qty);
 
                     if (qty < 0){
-                        printf("Qunatity has to be >= 0, try again");
+                        printf("Quantity has to be >= 0, try again");
                     }else{
                         break;
                     }
@@ -399,17 +427,7 @@ int main(){
             }
 
             else if (ch == 'e'){
-                printf("Fetching data\n");
-                printf("ProductID\tProductName\tQuantityInStock\tPrice\n");
-                while (1){
-                    struct product p;
-                    read(sockfd, &p, sizeof(struct product));
-                    if (p.id != -1){
-                        printProduct(p);
-                    }else{
-                        break;
-                    }
-                }
+                getInventory(sockfd);
             }
 
             else if (ch == 'f'){
@@ -418,13 +436,7 @@ int main(){
 
             else{
                 printf("Invalid choice, try again\n");
-                scanf("%c", &ch);
-                continue;
             }
-
-            displayMenuAdmin();
-            scanf("%c", &ch);
-            scanf("%c", &ch);
         }
     }
 
