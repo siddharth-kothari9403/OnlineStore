@@ -54,7 +54,6 @@ void getInventory(int sockfd){
 
 int calculateTotal(struct cart c){
     int total = 0;
-    // printf("Here\n");
     for (int i=0; i<MAX_PROD; i++){
         if (c.products[i].id != -1){
             total += c.products[i].qty * c.products[i].price;
@@ -136,7 +135,6 @@ int main(){
                 scanf("%d", &cusid);
                 write(sockfd, &cusid, sizeof(int));
 
-                // while (1){
                 struct cart o;
                 read(sockfd, &o, sizeof(struct cart));
 
@@ -166,7 +164,6 @@ int main(){
 
                 char response[80];
 
-                // for (int i=0; i<noprod; i++){
                     int pid, qty;
                     printf("Enter productId to order\n");
                     scanf("%d", &pid);
@@ -249,7 +246,6 @@ int main(){
 
                 int ordered, instock, price;
                 for (int i=0; i<MAX_PROD; i++){
-                    // printf("%d\n", i);
 
                     if (c.products[i].id != -1){
                         printf("Product id- %d\n", c.products[i].id);
@@ -261,8 +257,6 @@ int main(){
                         c.products[i].price = price;
                     }
                 }
-
-                // printf("Yp\n");
 
                 int total = calculateTotal(c);
                 
@@ -306,8 +300,6 @@ int main(){
             }
             else{
                 printf("Invalid choice, try again\n");
-                // scanf("%c", &ch);
-                // continue;
             }
 
             
@@ -329,17 +321,12 @@ int main(){
 
                 printf("Enter product name\n");
                 scanf("%s", name);
-                // int n1 = write(sockfd, name, sizeof(name));
-                // printf("%d\n", n1);
                 printf("Enter product id\n");
                 scanf("%d", &id);
-                // write(sockfd, &id, sizeof(int));
                 printf("Enter quantity\n");
                 scanf("%d", &qty);
-                // write(sockfd, &qty, sizeof(int));
                 printf("Enter price \n");
                 scanf("%d", &price);
-                // write(sockfd, &price, sizeof(int));
                 
                 struct product p;
                 p.id = id;
@@ -347,9 +334,7 @@ int main(){
                 p.qty = qty;
                 p.price = price;
 
-                // printf("%ld", sizeof(struct product));
                 int n1 = write(sockfd, &p, sizeof(struct product));
-                // printf("%d\n", n1);
 
                 char response[80];
                 int n = read(sockfd, response, sizeof(response));

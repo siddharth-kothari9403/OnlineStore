@@ -762,7 +762,6 @@ int main(){
 
                     else if (ch == 'f'){
 
-                        printf("Terminating connection\n");
                         close(new_fd);
                         break;
                     }
@@ -771,6 +770,7 @@ int main(){
                     }
                 }
             }
+            printf("Connection terminated\n");
 
         }else{
             close(new_fd);
