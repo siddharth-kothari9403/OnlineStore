@@ -82,7 +82,7 @@ int main(){
 
         int new_fd = accept(sockfd, (struct sockaddr *)&cli, &size);
         if (new_fd == -1){
-            perror("Error: ");
+            // perror("Error: ");
             return -1;
         }
 
@@ -92,6 +92,7 @@ int main(){
 
             int user;
             read(new_fd, &user, sizeof(int));
+            // printf("%d\n", user);
             
             if (user == 1){
 
@@ -117,7 +118,7 @@ int main(){
                         lock.l_len = 0;
                         lock.l_type = F_RDLCK;
 
-                        printf("Retrieving data\n");
+                        // printf("Retrieving data\n");
                         fcntl(fd, F_SETLKW, &lock);
 
                         struct product p;
@@ -518,24 +519,33 @@ int main(){
 
             }
             else if (user == 2){
+                // printf("Here\n");
 
                 char ch;
                 while (1){
-                    read(new_fd, &ch, sizeof(char));
+                    read(new_fd, &ch, sizeof(ch));
+                    // printf("%c\n", ch);
 
                     lseek(fd, 0, SEEK_SET);
                     lseek(fd_cart, 0, SEEK_SET);
                     lseek(fd_custs, 0, SEEK_SET);
 
                     if (ch == 'a'){
-
+                        // printf("Here\n");
                         char name[50];
                         int id, qty, price;
 
-                        read(new_fd, name, sizeof(name));
-                        read(new_fd, &id, sizeof(id));
-                        read(new_fd, &qty, sizeof(qty));
-                        read(new_fd, &price, sizeof(price));
+                        struct product p1;
+                        // int n = read(new_fd, name, sizeof(name));
+                        int n = read(new_fd, &p1, sizeof(struct product));
+
+                        strcpy(name, p1.name);
+                        id = p1.id;
+                        qty = p1.qty;
+                        price = p1.price;
+
+                        // printf("%s\n", name);
+                        // printf("%d %d %d\n", id, qty, price);
 
                         struct flock lock;
                         lock.l_len = 0;
@@ -546,23 +556,35 @@ int main(){
                         fcntl(fd, F_SETLKW, &lock);
 
                         struct product p;
+
+                        int flg = 0;
                         while (read(fd, &p, sizeof(struct product))){
+                            // cout<<"Here"<<endl;
+                            // printf("Here\n");
                             if (p.id == id){
                                 write(new_fd, "Duplicate product\n", sizeof("Duplicate product\n"));
                                 lock.l_type = F_UNLCK;
                                 fcntl(fd, F_SETLKW, &lock);
+                                flg = 1;
+                                break;
                             }
                         }
 
-                        lseek(fd, 0, SEEK_END);
-                        p.id = id;
-                        strcpy(p.name, name);
-                        p.price = price;
-                        p.qty = qty;
+                        if (!flg){
 
-                        write(new_fd, &p, sizeof(struct product));
-                        lock.l_type = F_UNLCK;
-                        fcntl(fd, F_SETLKW, &lock);
+                            lseek(fd, 0, SEEK_END);
+                            p.id = id;
+                            strcpy(p.name, name);
+                            p.price = price;
+                            p.qty = qty;
+
+                            write(fd, &p, sizeof(struct product));
+                            write(new_fd, "Added successfully\n", sizeof("Added succesfully\n"));
+                            lock.l_type = F_UNLCK;
+                            fcntl(fd, F_SETLKW, &lock);
+                            
+                        }
+                        
                     } 
 
                     else if (ch == 'b'){
@@ -577,6 +599,7 @@ int main(){
                         fcntl(fd, F_SETLKW, &lock);
                         
                         struct product p;
+                        int flg = 0;
                         while (read(fd, &p, sizeof(struct product))){
                             if (p.id == id){
                                 lseek(fd, (-1)*sizeof(struct product), SEEK_CUR);
@@ -595,26 +618,36 @@ int main(){
                                 p.qty = -1;
 
                                 write(fd, &p, sizeof(struct product));
-                                write(new_fd, "Delete succesful\n", sizeof("Delete successful\n"));
+                                write(new_fd, "Delete successful", sizeof("Delete successful"));
 
                                 lock.l_type = F_UNLCK;
                                 fcntl(fd, F_SETLKW, &lock);
-                                continue;
+                                flg = 1;
+                                break;
                             }
                         }
 
-                        // write(fd, &p, sizeof(struct product));
-                        write(new_fd, "Product id invalid\n", sizeof("Product id invalid\n"));
-                        lock.l_type = F_UNLCK;
-                        fcntl(fd, F_SETLKW, &lock);
+                        if (!flg){
+                            write(new_fd, "Product id invalid", sizeof("Product id invalid"));
+                            lock.l_type = F_UNLCK;
+                            fcntl(fd, F_SETLKW, &lock);
+                        }
+                        
                     }
 
                     else if (ch == 'c'){
-
+                        // printf("Here\n");
                         int id;
-                        read(new_fd, &id, sizeof(int));
+                        // read(new_fd, &id, sizeof(int));
                         int price;
-                        read(new_fd, &price, sizeof(int));
+                        // read(new_fd, &price, sizeof(int));
+
+                        struct product p1;
+                        read(new_fd, &p1, sizeof(struct product));
+                        id = p1.id;
+                        price = p1.price;
+
+                        // printf("%d %d\n", id, price);
 
                         struct flock lock;
                         lock.l_len = 0;
@@ -622,10 +655,13 @@ int main(){
                         lock.l_type = F_RDLCK;
                         lock.l_whence = SEEK_SET;
                         fcntl(fd, F_SETLKW, &lock);
+
+                        int flg = 0;
                         
                         struct product p;
                         while (read(fd, &p, sizeof(struct product))){
                             if (p.id == id){
+                                printf("Here\n");
                                 lseek(fd, (-1)*sizeof(struct product), SEEK_CUR);
 
                                 lock.l_type = F_UNLCK;
@@ -637,28 +673,38 @@ int main(){
                                 lock.l_len = sizeof(struct product);
 
                                 p.price = price;
+                                printf("%d\n", p.price);
 
                                 write(fd, &p, sizeof(struct product));
-                                write(new_fd, "Delete succesful\n", sizeof("Delete successful\n"));
+                                write(new_fd, "Price modified successfully", sizeof("Price modified successfully"));
 
                                 lock.l_type = F_UNLCK;
                                 fcntl(fd, F_SETLKW, &lock);
-                                continue;
+                                flg = 1;
+                                break;
                             }
                         }
 
-                        write(new_fd, "Product id invalid\n", sizeof("Product id invalid\n"));
-                        lock.l_type = F_UNLCK;
-                        fcntl(fd, F_SETLKW, &lock);
+                        if (!flg){
 
+                            write(new_fd, "Product id invalid", sizeof("Product id invalid"));
+                            lock.l_type = F_UNLCK;
+                            fcntl(fd, F_SETLKW, &lock);
+                        }
                     }
 
                     else if (ch == 'd'){
 
                         int id;
-                        read(new_fd, &id, sizeof(int));
+                        // read(new_fd, &id, sizeof(int));
                         int qty;
-                        read(new_fd, &qty, sizeof(int));
+                        // read(new_fd, &qty, sizeof(int));
+
+                        struct product p1;
+                        read(new_fd, &p1, sizeof(struct product));
+                        id = p1.id;
+                        qty = p1.qty;
+                        
 
                         struct flock lock;
                         lock.l_len = 0;
@@ -666,10 +712,14 @@ int main(){
                         lock.l_type = F_RDLCK;
                         lock.l_whence = SEEK_SET;
                         fcntl(fd, F_SETLKW, &lock);
+
+                        int flg = 1;
                         
                         struct product p;
                         while (read(fd, &p, sizeof(struct product))){
+                            printf("Here\n");
                             if (p.id == id){
+                                printf("Here1\n");
                                 lseek(fd, (-1)*sizeof(struct product), SEEK_CUR);
 
                                 lock.l_type = F_UNLCK;
@@ -683,18 +733,22 @@ int main(){
                                 p.qty = qty;
 
                                 write(fd, &p, sizeof(struct product));
-                                write(new_fd, "Delete succesful\n", sizeof("Delete successful\n"));
+                                write(new_fd, "Quantity modified successfully", sizeof("Quantity modified successfully"));
 
                                 lock.l_type = F_UNLCK;
                                 fcntl(fd, F_SETLKW, &lock);
-                                continue;
+                                flg = 0;
+                                break;
                             }
                         }
 
-                        write(new_fd, "Product id invalid\n", sizeof("Product id invalid\n"));
-                        lock.l_type = F_UNLCK;
-                        fcntl(fd, F_SETLKW, &lock);
+                        printf("Out\n");
 
+                        if (flg){
+                            write(new_fd, "Product id invalid", sizeof("Product id invalid"));
+                            lock.l_type = F_UNLCK;
+                            fcntl(fd, F_SETLKW, &lock);
+                        }
                     }
 
                     else if (ch == 'e'){
@@ -705,7 +759,7 @@ int main(){
                         lock.l_len = 0;
                         lock.l_type = F_RDLCK;
 
-                        printf("Retrieving data\n");
+                        // printf("Retrieving data\n");
                         fcntl(fd, F_SETLKW, &lock);
 
                         struct product p;
@@ -734,11 +788,8 @@ int main(){
                     }
                 }
 
+                // printf("Out of loop\n");
             }
-            else{
-                
-            }
-            
 
         }else{
             close(new_fd);

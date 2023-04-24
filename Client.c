@@ -84,7 +84,7 @@ int main(){
     if (user == 1){
         displayMenuUser();
         char ch;
-
+        scanf("%c",&ch);
         while (1){
             scanf("%c",&ch);
 
@@ -289,8 +289,10 @@ int main(){
         displayMenuAdmin();
 
         char ch;
-        scanf("%c", &ch);
+        scanf("%c",&ch);
+        scanf("%c",&ch);
         while (1){
+            write(sockfd, &ch, sizeof(ch));
 
             if (ch == 'a'){
                 //add a product
@@ -298,22 +300,34 @@ int main(){
                 char name[50];
 
                 printf("Enter product name\n");
-                scanf("%[^\n]s", name);
-                write(sockfd, name, sizeof(name));
+                scanf("%s", name);
+                // int n1 = write(sockfd, name, sizeof(name));
+                // printf("%d\n", n1);
                 printf("Enter product id\n");
                 scanf("%d", &id);
-                write(sockfd, &id, sizeof(int));
+                // write(sockfd, &id, sizeof(int));
                 printf("Enter quantity\n");
                 scanf("%d", &qty);
-                write(sockfd, &qty, sizeof(int));
+                // write(sockfd, &qty, sizeof(int));
                 printf("Enter price \n");
                 scanf("%d", &price);
-                write(sockfd, &price, sizeof(int));
+                // write(sockfd, &price, sizeof(int));
+                
+                struct product p;
+                p.id = id;
+                strcpy(p.name, name);
+                p.qty = qty;
+                p.price = price;
+
+                // printf("%ld", sizeof(struct product));
+                int n1 = write(sockfd, &p, sizeof(struct product));
+                // printf("%d\n", n1);
 
                 char response[80];
-                read(sockfd, response, sizeof(response));
+                int n = read(sockfd, response, sizeof(response));
+                response[n] = '\0';
 
-                printf("%s\n", response);
+                printf("%s", response);
             }
 
             else if (ch == 'b'){
@@ -404,7 +418,13 @@ int main(){
 
             else{
                 printf("Invalid choice, try again\n");
+                scanf("%c", &ch);
+                continue;
             }
+
+            displayMenuAdmin();
+            scanf("%c", &ch);
+            scanf("%c", &ch);
         }
     }
 
