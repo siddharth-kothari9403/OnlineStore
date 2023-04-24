@@ -458,7 +458,7 @@ int main(){
 
                         lseek(fd_cart, offset, SEEK_SET);
 
-                        for (int i=0; i,MAX_PROD; i++){
+                        for (int i=0; i<MAX_PROD; i++){
                             c.products[i].id = -1;
                             strcpy(c.products[i].name, "");
                             c.products[i].price = -1;
@@ -509,8 +509,6 @@ int main(){
                             lock.l_type = F_UNLCK;
                             fcntl(fd_custs, F_SETLKW, &lock);
                             write(new_fd, &max_id, sizeof(int));
-
-                            debugCust(fd_custs);
 
                         }else{
                             continue;

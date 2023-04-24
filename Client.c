@@ -84,7 +84,10 @@ void generateReceipt(int total, struct cart c){
     for (int i=0; i<MAX_PROD; i++){
         writeProduct(fd_rec, c.products[i]);
     }
-    printf("Total - %d\n", total);
+
+    write(fd_rec, "Total - ", sizeof("Total - "));
+    write(fd_rec, total, sizeof(int));
+    write(fd_rec, "\n", sizeof("\n"));
     close(fd_rec);
 }
 
@@ -248,11 +251,11 @@ int main(){
                 for (int i=0; i<MAX_PROD; i++){
 
                     if (c.products[i].id != -1){
-                        printf("Product id- %d\n", c.products[i].id);
-                        printf("Ordered - %d; In stock - %d; Price - %d\n", ordered, instock, price);
                         read(sockfd, &ordered, sizeof(int));
                         read(sockfd, &instock, sizeof(int));
                         read(sockfd, &price, sizeof(int));
+                        printf("Product id- %d\n", c.products[i].id);
+                        printf("Ordered - %d; In stock - %d; Price - %d\n", ordered, instock, price);
                         c.products[i].qty = instock;
                         c.products[i].price = price;
                     }
