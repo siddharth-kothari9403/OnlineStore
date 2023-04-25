@@ -20,4 +20,20 @@ You can login as one of the following:
 # Program Architecture
 1. There are 2 programs - Server.c and Client.c. Server.c is the Server code, while Client.c is the Client code, which allows you to login as a user or as the admin.
 2. The program uses sockets to communicate between the server and client, and file locking while accessing the files which contain data.
-3. customers.txt contains the list of customers registered with the program, orders.txt contains the cart for each customer, records.txt contains the products in the inventory, and receipt.txt contains 
+3. customers.txt contains the list of customers registered with the program, orders.txt contains the cart for each customer, records.txt contains the products in the inventory, and receipt.txt contains the recept generated once payment for a customer is completed.
+
+# Instructions to run the program
+Open a terminal, and run the following commands 
+
+```
+gcc -o server Server.c
+./server
+```
+
+In a separate terminal, run the following commands
+```
+gcc -o client Client.c
+./client
+```
+
+Now you can use the user menu or admin menu as directed by the program to perform operations on the products or customers.
