@@ -112,9 +112,8 @@ void listProducts(int fd, int new_fd){
     fcntl(fd, F_SETLKW, &lock);
 }
 
-void deleteProduct(int fd, int new_fd){
-    int id;
-    read(new_fd, &id, sizeof(int));
+void deleteProduct(int fd, int new_fd, int id){
+    
 
     struct flock lock;
     lock.l_len = 0;
@@ -176,7 +175,8 @@ void updateProduct(int fd, int new_fd, int ch){
     }
 
     if (ch == 2 && val == 0){
-        deleteProduct(fd, new_fd);
+        deleteProduct(fd, new_fd, id);
+        return;
     }
 
     struct flock lock;
@@ -557,6 +557,7 @@ void payment(int fd, int fd_cart, int fd_custs, int new_fd){
     }
 
     write(fd_cart, &c, sizeof(struct cart));
+    write(new_fd, &ch, sizeof(char));
 }
 
 void addCustomer(int fd_cart, int fd_custs, int new_fd){
@@ -714,7 +715,9 @@ int main(){
                         addProducts(fd, new_fd);
                     } 
                     else if (ch == 'b'){
-                        deleteProduct(fd, new_fd);
+                        int id;
+                        read(new_fd, &id, sizeof(int));
+                        deleteProduct(fd, new_fd, id);
                     }
                     else if (ch == 'c'){
                         updateProduct(fd, new_fd, 1);

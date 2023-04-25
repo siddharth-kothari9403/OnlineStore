@@ -64,23 +64,80 @@ int calculateTotal(struct cart c){
 }
 
 void generateReceipt(int total, struct cart c){
-
     int fd_rec = open("receipt.txt", O_CREAT | O_RDWR, 0777);
-
     write(fd_rec, "ProductID\tProductName\tQuantity\tPrice\n", sizeof("ProductID\tProductName\tQuantity\tPrice\n"));
-
     char temp[100];
-
     for (int i=0; i<MAX_PROD; i++){
         if (c.products[i].id != -1){
             sprintf(temp, "%d\t%s\t%d\t%d\n", c.products[i].id, c.products[i].name, c.products[i].qty, c.products[i].price);
             write(fd_rec, temp, sizeof(temp));
         }
     }
-
     sprintf(temp, "Total - %d\n", total);
     write(fd_rec, temp, sizeof(temp));
     close(fd_rec);
+}
+
+//input functions
+int custIdTaker(){
+    int custId = -1;
+    while (1){
+        printf("Enter customer id\n");
+        scanf("%d", &custId);
+
+        if (custId < 0){
+            printf("Customer id can't be negative, try again\n");
+        }else{
+            break;
+        }
+    }
+    return custId;
+}
+
+int prodIdTaker(){
+    int prodId = -1;
+    while (1){
+        printf("Enter product id\n");
+        scanf("%d", &prodId);
+
+        if (prodId < 0){
+            printf("Product id can't be negative, try again\n");
+        }else{
+            break;
+        }
+    }
+    return prodId;
+}
+
+int priceTaker(){
+    int price = -1;
+    while (1){
+        printf("Enter price\n");
+        scanf("%d", &price);
+
+        if (price < 0){
+            printf("Price can't be negative, try again\n");
+        }else{
+            break;
+        }
+    }
+    return price;
+}
+
+int quantityTaker(){
+    int qty = -1;
+    while (1){
+        printf("Enter quantity\n");
+        scanf("%d", &qty);
+
+        if (qty < 0){
+            printf("Quantity can't be negative, try again\n");
+        }else{
+            break;
+        }
+
+    }
+    return qty;
 }
 
 int main(){
@@ -125,9 +182,8 @@ int main(){
                 getInventory(sockfd);
             }
             else if (ch == 'c'){
-                int cusid;
-                printf("Enter customer id\n");
-                scanf("%d", &cusid);
+                int cusid = custIdTaker();
+                
                 write(sockfd, &cusid, sizeof(int));
 
                 struct cart o;
@@ -145,9 +201,8 @@ int main(){
             }
 
             else if (ch == 'd'){
-                int cusid;
-                printf("Enter customer id\n");
-                scanf("%d", &cusid);
+                int cusid = custIdTaker();
+                
                 write(sockfd, &cusid, sizeof(int));
 
                 int res;
@@ -156,12 +211,9 @@ int main(){
                     printf("Invalid customer id\n");
                     continue;
                 }
-
                 char response[80];
-
                 int pid, qty;
-                printf("Enter productId to order\n");
-                scanf("%d", &pid);
+                pid = prodIdTaker();
                 
                 while (1){
                     printf("Enter quantity\n");
@@ -185,9 +237,8 @@ int main(){
             }
 
             else if (ch == 'e'){
-                int cusid;
-                printf("Enter customer id\n");
-                scanf("%d", &cusid);
+                int cusid = custIdTaker();
+                
                 write(sockfd, &cusid, sizeof(int));
 
                 int res;
@@ -198,19 +249,8 @@ int main(){
                 }
 
                 int pid, qty;
-                printf("Enter productId to modify\n");
-                scanf("%d", &pid);
-
-                while (1){
-                    printf("Enter new quantity, enter 0 to remove product from order\n");
-                    scanf("%d", &qty);
-
-                    if (qty < 0){
-                        printf("Quantity can't be < 0, try again\n");
-                    }else{
-                        break;
-                    }
-                }
+                pid = prodIdTaker();
+                qty = quantityTaker();
                 
                 struct product p;
                 p.id = pid;
@@ -224,9 +264,7 @@ int main(){
             }
 
             else if (ch == 'f'){
-                int cusid;
-                printf("Enter customer id\n");
-                scanf("%d", &cusid);
+                int cusid = custIdTaker();
                 write(sockfd, &cusid, sizeof(int));
 
                 int res;
@@ -273,6 +311,7 @@ int main(){
                 char ch = 'y';
                 printf("Payment recorded, order placed\n");
                 write(sockfd, &ch, sizeof(char));
+                read(sockfd, &ch, sizeof(char));
                 generateReceipt(total, c);
             }
 
@@ -316,12 +355,9 @@ int main(){
 
                 printf("Enter product name\n");
                 scanf("%s", name);
-                printf("Enter product id\n");
-                scanf("%d", &id);
-                printf("Enter quantity\n");
-                scanf("%d", &qty);
-                printf("Enter price \n");
-                scanf("%d", &price);
+                id = prodIdTaker();
+                qty = quantityTaker();
+                price = priceTaker();
                 
                 struct product p;
                 p.id = id;
@@ -340,8 +376,8 @@ int main(){
 
             else if (ch == 'b'){
                 printf("Enter product id to be deleted\n");
-                int id;
-                scanf("%d", &id);
+                int id = prodIdTaker();
+                
                 write(sockfd, &id, sizeof(int));
                 //deleting is equivalent to setting everything as -1
 
@@ -351,23 +387,10 @@ int main(){
             }
 
             else if (ch == 'c'){
-                printf("Enter product id whose price is to be modified\n");
-                int id;
-                scanf("%d", &id);
+                int id = prodIdTaker();
 
-                int price = -1;
-                while (1){
-                    printf("Enter new price\n");
-                    scanf("%d", &price);
-
-                    if (price <= 0){
-                        printf("Price has to be > 0, try again");
-                    }else{
-                        break;
-                    }
-                }
+                int price = priceTaker();
                 
-
                 struct product p;
                 p.id = id;
                 p.price = price;
@@ -379,21 +402,8 @@ int main(){
             }
 
             else if (ch == 'd'){
-                printf("Enter product id whose quantity is to be modified\n");
-                int id;
-                scanf("%d", &id);
-
-                int qty = -1;
-                while (1){
-                    printf("Enter new quantity\n");
-                    scanf("%d", &qty);
-
-                    if (qty < 0){
-                        printf("Quantity has to be >= 0, try again");
-                    }else{
-                        break;
-                    }
-                }
+                int id = prodIdTaker();
+                int qty = quantityTaker();
 
                 struct product p;
                 p.id = id;
