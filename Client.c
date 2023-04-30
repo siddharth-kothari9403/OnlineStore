@@ -375,7 +375,7 @@ int main(){
             }
 
             else if (ch == 'b'){
-                printf("Enter product id to be deleted\n");
+                // printf("Enter product id to be deleted\n");
                 int id = prodIdTaker();
                 
                 write(sockfd, &id, sizeof(int));
