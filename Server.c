@@ -224,6 +224,44 @@ void updateProduct(int fd, int new_fd, int ch){
     }
 }
 
+void addCustomer(int fd_cart, int fd_custs, int new_fd){
+    char buf;
+    read(new_fd, &buf, sizeof(char));
+    if (buf == 'y'){
+
+        struct flock lock;
+        setLockCust(fd_custs, lock);
+        
+        int max_id = -1; 
+        struct index id ;
+        while (read(fd_custs, &id, sizeof(struct index))){
+            if (id.custid > max_id){
+                max_id = id.custid;
+            }
+        }
+
+        max_id ++;
+        
+        id.custid = max_id;
+        id.offset = lseek(fd_cart, 0, SEEK_END);
+        lseek(fd_custs, 0, SEEK_END);
+        write(fd_custs, &id, sizeof(struct index));
+
+        struct cart c;
+        c.custid = max_id;
+        for (int i=0; i<MAX_PROD; i++){
+            c.products[i].id = -1;
+            strcpy(c.products[i].name , "");
+            c.products[i].qty = -1;
+            c.products[i].price = -1;
+        }
+
+        write(fd_cart, &c, sizeof(struct cart));
+        unlock(fd_custs, lock);
+        write(new_fd, &max_id, sizeof(int));
+    }
+}
+
 void viewCart(int fd_cart, int new_fd, int fd_custs){
     int cust_id = -1;
     read(new_fd, &cust_id, sizeof(int));
@@ -498,44 +536,6 @@ void payment(int fd, int fd_cart, int fd_custs, int new_fd){
     write(fd_cart, &c, sizeof(struct cart));
     write(new_fd, &ch, sizeof(char));
     unlock(fd_cart, lock_cart);
-}
-
-void addCustomer(int fd_cart, int fd_custs, int new_fd){
-    char buf;
-    read(new_fd, &buf, sizeof(char));
-    if (buf == 'y'){
-
-        struct flock lock;
-        setLockCust(fd_custs, lock);
-        
-        int max_id = -1; 
-        struct index id ;
-        while (read(fd_custs, &id, sizeof(struct index))){
-            if (id.custid > max_id){
-                max_id = id.custid;
-            }
-        }
-
-        max_id ++;
-        
-        id.custid = max_id;
-        id.offset = lseek(fd_cart, 0, SEEK_END);
-        lseek(fd_custs, 0, SEEK_END);
-        write(fd_custs, &id, sizeof(struct index));
-
-        struct cart c;
-        c.custid = max_id;
-        for (int i=0; i<MAX_PROD; i++){
-            c.products[i].id = -1;
-            strcpy(c.products[i].name , "");
-            c.products[i].qty = -1;
-            c.products[i].price = -1;
-        }
-
-        write(fd_cart, &c, sizeof(struct cart));
-        unlock(fd_custs, lock);
-        write(new_fd, &max_id, sizeof(int));
-    }
 }
 
 int main(){
