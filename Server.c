@@ -182,11 +182,6 @@ void updateProduct(int fd, int new_fd, int ch){
         val = p1.qty;
     }
 
-    if (ch == 2 && val == 0){
-        deleteProduct(fd, new_fd, id);
-        return;
-    }
-
     struct flock lock;
     productReadLock(fd, lock);
 
@@ -475,6 +470,7 @@ void payment(int fd, int fd_cart, int fd_custs, int new_fd){
             lseek(fd, 0, SEEK_SET);
 
             struct product p;
+            int flg = 0;
             while (read(fd, &p, sizeof(struct product))){
 
                 if (p.id == c.products[i].id && p.qty > 0) {
@@ -485,11 +481,21 @@ void payment(int fd, int fd_cart, int fd_custs, int new_fd){
                         min = c.products[i].qty;
                     }
 
+                    flg =1;
                     write(new_fd, &min, sizeof(int));
                     write(new_fd, &p.price, sizeof(int));
+                    break;
                 }
             }
+
             unlock(fd, lock_prod);
+
+            if (!flg){
+                //product got deleted midway
+                int val = 0;
+                write(new_fd, &val, sizeof(int));
+                write(new_fd, &val, sizeof(int));
+            }
         }      
     }
 
