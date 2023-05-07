@@ -37,3 +37,5 @@ gcc -o client Client.c
 ```
 
 Now you can use the user menu or admin menu as directed by the program to perform operations on the products or customers.
+
+Kindly refer to the project report for details on implementation.
