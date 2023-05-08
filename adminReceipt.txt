@@ -1,0 +1,17 @@
+New product with product id 3 added successfully
+New product with product id 4 added successfully
+Product with product id 4 deleted succesfully
+Price of product with product id 3 modified from 10 to 50 
+Quantity of product with product id 3 modified from 10 to 20 
+Adding product with product id 1 failed as product id is duplicate
+Deleting product with product id 9 failed as product does not exist
+Current Inventory:
+ProductID	ProductName	Quantity	Price
+Current Inventory:
+ProductID	ProductName	Quantity	Price
+New product with product id 1 added successfully
+New product with product id 2 added successfully
+Current Inventory:
+ProductID	ProductName	Quantity	Price
+1	Oranges	10	10
+2	Guavas	20	10

@@ -76,9 +76,10 @@ int getOffset(int cust_id, int fd_custs){
     return -1;
 }
 
-void addProducts(int fd, int new_fd){
+void addProducts(int fd, int new_fd, int fd_admin){
 
     char name[50];
+    char response[100];
     int id, qty, price;
 
     struct product p1;
@@ -99,9 +100,11 @@ void addProducts(int fd, int new_fd){
 
         if (p.id == id && p.qty > 0){
             write(new_fd, "Duplicate product\n", sizeof("Duplicate product\n"));
+            sprintf(response, "Adding product with product id %d failed as product id is duplicate\n", id);
+            write(fd_admin, response, strlen(response));
             unlock(fd, lock);
             flg = 1;
-            break;
+            return;
         }
     }
 
@@ -115,6 +118,8 @@ void addProducts(int fd, int new_fd){
 
         write(fd, &p, sizeof(struct product));
         write(new_fd, "Added successfully\n", sizeof("Added succesfully\n"));
+        sprintf(response, "New product with product id %d added successfully\n", id);
+        write(fd_admin, response, strlen(response));
         unlock(fd, lock);   
     }
 }
@@ -136,10 +141,11 @@ void listProducts(int fd, int new_fd){
     unlock(fd, lock);
 }
 
-void deleteProduct(int fd, int new_fd, int id){
+void deleteProduct(int fd, int new_fd, int id, int fd_admin){
 
     struct flock lock;
     productReadLock(fd, lock);
+    char response[100];
 
     struct product p;
     int flg = 0;
@@ -156,25 +162,31 @@ void deleteProduct(int fd, int new_fd, int id){
 
             write(fd, &p, sizeof(struct product));
             write(new_fd, "Delete successful", sizeof("Delete successful"));
+            sprintf(response, "Product with product id %d deleted succesfully\n", id);
+            write(fd_admin, response, strlen(response));
 
             unlock(fd, lock);
             flg = 1;
-            break;
+            return;
         }
     }
 
     if (!flg){
+        sprintf(response, "Deleting product with product id %d failed as product does not exist\n", id);
+        write(fd_admin, response, strlen(response));
         write(new_fd, "Product id invalid", sizeof("Product id invalid"));
         unlock(fd, lock);
     }
 }
 
-void updateProduct(int fd, int new_fd, int ch){
+void updateProduct(int fd, int new_fd, int ch, int fd_admin){
     int id;
     int val = -1;
     struct product p1;
     read(new_fd, &p1, sizeof(struct product));
     id = p1.id;
+
+    char response[100];
     
     if (ch == 1){
         val = p1.price;
@@ -193,18 +205,24 @@ void updateProduct(int fd, int new_fd, int ch){
 
             unlock(fd, lock);
             productWriteLock(fd, lock);
-
+            int old;
             if (ch == 1){
+                old = p.price;
                 p.price = val;
             }else{
+                old = p.qty;
                 p.qty = val;
             }
 
             write(fd, &p, sizeof(struct product));
             if (ch == 1){
                 write(new_fd, "Price modified successfully", sizeof("Price modified successfully"));
+                sprintf(response, "Price of product with product id %d modified from %d to %d \n", id, old, val);
+                write(fd_admin, response, strlen(response));
             }else{
-                 write(new_fd, "Quantity modified successfully", sizeof("Quantity modified successfully"));               
+                sprintf(response, "Quantity of product with product id %d modified from %d to %d \n", id, old, val);
+                write(fd_admin, response, strlen(response));
+                write(new_fd, "Quantity modified successfully", sizeof("Quantity modified successfully"));               
             }
 
             unlock(fd, lock);
@@ -542,6 +560,40 @@ void payment(int fd, int fd_cart, int fd_custs, int new_fd){
     write(fd_cart, &c, sizeof(struct cart));
     write(new_fd, &ch, sizeof(char));
     unlock(fd_cart, lock_cart);
+
+    read(new_fd, &total, sizeof(int));
+    read(new_fd, &c, sizeof(struct cart));
+
+    int fd_rec = open("receipt.txt", O_CREAT | O_RDWR, 0777);
+    write(fd_rec, "ProductID\tProductName\tQuantity\tPrice\n", strlen("ProductID\tProductName\tQuantity\tPrice\n"));
+    char temp[100];
+    for (int i=0; i<MAX_PROD; i++){
+        if (c.products[i].id != -1){
+            sprintf(temp, "%d\t%s\t%d\t%d\n", c.products[i].id, c.products[i].name, c.products[i].qty, c.products[i].price);
+            write(fd_rec, temp, strlen(temp));
+        }
+    }
+    sprintf(temp, "Total - %d\n", total);
+    write(fd_rec, temp, strlen(temp));
+    close(fd_rec);
+}
+
+void generateAdminReceipt(int fd_admin, int fd){
+    struct flock lock;
+    productReadLock(fd, lock);
+    write(fd_admin, "Current Inventory:\n", strlen("Current Inventory:\n"));
+    write(fd_admin, "ProductID\tProductName\tQuantity\tPrice\n", strlen("ProductID\tProductName\tQuantity\tPrice\n"));
+
+    lseek(fd, 0, SEEK_SET);
+    struct product p;
+    while (read(fd, &p, sizeof(struct product))){
+        if (p.id != -1){
+            char temp[100];
+            sprintf(temp, "%d\t%s\t%d\t%d\n",p.id, p.name, p.qty, p.price);
+            write(fd_admin, temp, strlen(temp));
+        }
+    }
+    unlock(fd, lock);
 }
 
 int main(){
@@ -552,6 +604,8 @@ int main(){
     int fd = open("records.txt", O_RDWR | O_CREAT, 0777);
     int fd_cart = open("orders.txt", O_RDWR | O_CREAT, 0777);
     int fd_custs = open("customers.txt", O_RDWR | O_CREAT, 0777);
+    int fd_admin = open("adminReceipt.txt", O_RDWR | O_CREAT, 0777);
+    lseek(fd_admin, 0, SEEK_END);
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -651,19 +705,19 @@ int main(){
                     lseek(fd_custs, 0, SEEK_SET);
 
                     if (ch == 'a'){
-                        addProducts(fd, new_fd);
+                        addProducts(fd, new_fd, fd_admin);
                     } 
                     else if (ch == 'b'){
                         int id;
                         read(new_fd, &id, sizeof(int));
-                        deleteProduct(fd, new_fd, id);
+                        deleteProduct(fd, new_fd, id, fd_admin);
                     }
                     else if (ch == 'c'){
-                        updateProduct(fd, new_fd, 1);
+                        updateProduct(fd, new_fd, 1, fd_admin);
                     }
 
                     else if (ch == 'd'){
-                        updateProduct(fd, new_fd, 2);
+                        updateProduct(fd, new_fd, 2, fd_admin);
                     }
 
                     else if (ch == 'e'){
@@ -672,6 +726,7 @@ int main(){
 
                     else if (ch == 'f'){
                         close(new_fd);
+                        generateAdminReceipt(fd_admin, fd);
                         break;
                     }
                     else{

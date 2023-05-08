@@ -1,4 +1,3 @@
 ProductID	ProductName	Quantity	Price
-1	Bananas	20	10
-2	Apples	20	10
-Total - 400
+1	Oranges	5	10
+Total - 50

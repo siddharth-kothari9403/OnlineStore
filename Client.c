@@ -63,19 +63,11 @@ int calculateTotal(struct cart c){
     return total;
 }
 
-void generateReceipt(int total, struct cart c){
-    int fd_rec = open("receipt.txt", O_CREAT | O_RDWR, 0777);
-    write(fd_rec, "ProductID\tProductName\tQuantity\tPrice\n", strlen("ProductID\tProductName\tQuantity\tPrice\n"));
-    char temp[100];
-    for (int i=0; i<MAX_PROD; i++){
-        if (c.products[i].id != -1){
-            sprintf(temp, "%d\t%s\t%d\t%d\n", c.products[i].id, c.products[i].name, c.products[i].qty, c.products[i].price);
-            write(fd_rec, temp, strlen(temp));
-        }
-    }
-    sprintf(temp, "Total - %d\n", total);
-    write(fd_rec, temp, strlen(temp));
-    close(fd_rec);
+void generateReceipt(int total, struct cart c, int sockfd){
+
+    write(sockfd, &total, sizeof(int));
+    write(sockfd, &c, sizeof(struct cart));
+    
 }
 
 //input functions
@@ -312,7 +304,7 @@ int main(){
                 printf("Payment recorded, order placed\n");
                 write(sockfd, &ch, sizeof(char));
                 read(sockfd, &ch, sizeof(char));
-                generateReceipt(total, c);
+                generateReceipt(total, c, sockfd);
             }
 
             else if (ch == 'g'){
